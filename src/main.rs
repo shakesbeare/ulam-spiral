@@ -1,6 +1,6 @@
 use ::bevy::prelude::*;
 
-const WALL: f32 = 100.;
+const WALL: f32 = 125.;
 
 fn main() {
     App::new()
@@ -10,6 +10,7 @@ fn main() {
         .insert_resource(CurrentDirection::default())
         .insert_resource(FaceProgressCounter::default())
         .insert_resource(TurnsDone::default())
+        .insert_resource(Primes::default())
         .add_startup_system(setup)
         .insert_resource(ClearColor(Color::hex("1d2021").unwrap()))
         .add_system(spawn_dots)
@@ -45,6 +46,9 @@ impl Size {
 }
 
 struct NumCounter(i64);
+
+#[derive(Default)]
+struct Primes(Vec<i64>);
 
 #[derive(Default)]
 struct NextCoord(Position);
@@ -105,8 +109,9 @@ fn spawn_dots(
     mut current_direction: ResMut<CurrentDirection>,
     mut face_progress_counter: ResMut<FaceProgressCounter>,
     mut turns_done: ResMut<TurnsDone>,
+    mut primes: ResMut<Primes>,
 ) {
-    if is_prime(num_counter.0) {
+    if is_prime(num_counter.0, primes) {
         commands
             .spawn_bundle(SpriteBundle {
                 sprite: Sprite {
@@ -116,7 +121,10 @@ fn spawn_dots(
                 ..default()
             })
             .insert(Dot)
-            .insert(Position { x: next_coord.0.x, y: next_coord.0.y })
+            .insert(Position {
+                x: next_coord.0.x,
+                y: next_coord.0.y,
+            })
             .insert(Size::square(0.8));
     }
 
@@ -133,7 +141,6 @@ fn spawn_dots(
         turns_done.0 = 0;
     }
 
-    println!("{:?}", current_direction.0);
     match current_direction.0 {
         Direction::Up => {
             next_coord.0.y += 1;
@@ -152,14 +159,29 @@ fn spawn_dots(
     num_counter.0 += 1;
 }
 
-fn is_prime(num: i64) -> bool {
-    let limit = f64::sqrt(num as f64);
-    for divisor in 2..limit as i64 {
-        if num % divisor == 1 {
-            return false;
+fn is_prime(num: i64, mut primes: ResMut<Primes>) -> bool {
+    if num == 1 { return false; }
+    if primes.0.len() == 0 && num != 1 {
+        primes.0.push(num);
+        return true;
+    }
+
+    if primes.0.contains(&num) {
+        return true;
+    } else {
+        let limit = f64::sqrt(num as f64);
+        for divisor in primes.0.clone().iter() {
+            if num % divisor == 0 {
+                return false;
+            }
+
+            if *divisor as f64 > limit {
+                break;
+            }
         }
     }
 
+    primes.0.push(num);
     return true;
 }
 
